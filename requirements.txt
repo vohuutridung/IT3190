@@ -1,0 +1,6 @@
+#python=3.10
+together
+datasets
+python-dotenv
+google-genai
+
