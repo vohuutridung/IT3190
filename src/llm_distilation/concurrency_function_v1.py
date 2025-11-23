@@ -36,65 +36,65 @@ ASPECT TERMS:
     return prompt
 
 
-# def create_filter_prompt(sentence, aspects, candidates, K):
-#
-#     prompt = f"""
-# You are a strict evaluator of Aspect-Term-Oriented Sentence Splitting (ATOSS).
-#
-# Your task:
-# Given:
-# - the ORIGINAL sentence,
-# - ASPECT terms,
-# - 10 CANDIDATE split versions S′ (each S′ is a SINGLE STRING containing several shorter sentences),
-#
-# Select EXACTLY {K} BEST versions that follow ALL splitting rules.
-#
-# A valid split version S′ MUST satisfy:
-#
-# RULES:
-# 1. S′ must be ONE SINGLE STRING that includes several shorter sentences.
-# 2. Each shorter sentence MUST contain EXACTLY ONE aspect term.
-# 3. All spellings must match the original EXACTLY (no substitutions).
-# 4. All spacing must match the original EXACTLY (no extra/missing spaces).
-# 5. No rewriting, no paraphrasing, no synonym replacements.
-# 6. No missing content and no added content.
-# 7. No reordering of any part of the original sentence.
-# 8. Every shorter sentence MUST contain an explicit subject.
-# 9. Conjunctions ("and", "or", "but", commas) may appear ONLY if they appear in the original.
-#
-# INVALID candidates should be discarded:
-# - If any sentence has zero aspects or more than one → invalid.
-# - If spelling/spacing changes → invalid.
-# - If subject is missing → invalid.
-# - If content is removed, merged, or reordered → invalid.
-#
-# ------------------------------------------
-# ### EXAMPLES OF CORRECT S′ FORMAT (from ATOSS paper)
-#
-# Correct S′ example:
-# very immature bartender, didnt know how to make specific drinks. service was so slowwwww. the food was not fresh or warm. waitresses were busy flirting with men at the bar and werent very attentive to all the customers .
-#
-# Another valid S′:
-# i swore never to return for a warm beer. i swore never to return for a mediocre meal.
-#
-# ------------------------------------------
-#
-# OUTPUT REQUIREMENT:
-# - Return EXACTLY {K} valid S′ versions.
-# - Each version on its own line.
-# - NO JSON, NO numbering, NO markdown, NO explanation.
-#
-# ORIGINAL SENTENCE:
-# {sentence}
-#
-# ASPECT TERMS:
-# {aspects}
-#
-# CANDIDATES SPLITS:
-# {json.dumps(candidates, indent=2)}
-# """
-#
-#     return prompt
+def create_filter_prompt(sentence, aspects, candidates, K):
+
+    prompt = f"""
+You are a strict evaluator of Aspect-Term-Oriented Sentence Splitting (ATOSS).
+
+Your task:
+Given:
+- the ORIGINAL sentence,
+- ASPECT terms,
+- 10 CANDIDATE split versions S′ (each S′ is a SINGLE STRING containing several shorter sentences),
+
+Select EXACTLY {K} BEST versions that follow ALL splitting rules.
+
+A valid split version S′ MUST satisfy:
+
+RULES:
+1. S′ must be ONE SINGLE STRING that includes several shorter sentences.
+2. Each shorter sentence MUST contain EXACTLY ONE aspect term.
+3. All spellings must match the original EXACTLY (no substitutions).
+4. All spacing must match the original EXACTLY (no extra/missing spaces).
+5. No rewriting, no paraphrasing, no synonym replacements.
+6. No missing content and no added content.
+7. No reordering of any part of the original sentence.
+8. Every shorter sentence MUST contain an explicit subject.
+9. Conjunctions ("and", "or", "but", commas) may appear ONLY if they appear in the original.
+
+INVALID candidates should be discarded:
+- If any sentence has zero aspects or more than one → invalid.
+- If spelling/spacing changes → invalid.
+- If subject is missing → invalid.
+- If content is removed, merged, or reordered → invalid.
+
+------------------------------------------
+### EXAMPLES OF CORRECT S′ FORMAT (from ATOSS paper)
+
+Correct S′ example:
+very immature bartender, didnt know how to make specific drinks. service was so slowwwww. the food was not fresh or warm. waitresses were busy flirting with men at the bar and werent very attentive to all the customers .
+
+Another valid S′:
+i swore never to return for a warm beer. i swore never to return for a mediocre meal.
+
+------------------------------------------
+
+OUTPUT REQUIREMENT:
+- Return EXACTLY {K} valid S′ versions.
+- Each version on its own line.
+- NO JSON, NO numbering, NO markdown, NO explanation.
+
+ORIGINAL SENTENCE:
+{sentence}
+
+ASPECT TERMS:
+{aspects}
+
+CANDIDATES SPLITS:
+{json.dumps(candidates, indent=2)}
+"""
+
+    return prompt
 
 def generate_splits(sentence, aspects):
 
@@ -102,7 +102,7 @@ def generate_splits(sentence, aspects):
 
     versions = []
 
-    for i in range(2):
+    for i in range(10):
 
         response = client.chat.completions.create(
             model=MODEL,
@@ -119,38 +119,38 @@ def generate_splits(sentence, aspects):
         versions.append(text.strip().replace("\n", ". "))
 
     print("first_raw_output", versions)
-    if len(versions) != 2:
+    if len(versions) != 10:
         print(f"WARNING: Gemini did not return 10 versions, only {len(versions)} versions")
         print("Versions: ", versions)
         return versions
 
     return versions
 
-# def filter_split(sentence, aspects, candidates, K=2):
-#
-#     prompt = create_filter_prompt(sentence, aspects, candidates, K)
-#
-#     response = client.chat.completions.create(
-#         model=MODEL,
-#         messages=[
-#             {
-#                 "role": "user",
-#                 "content": prompt
-#             }
-#         ],
-#         temperature=0.0
-#     )
-#
-#     text = response.choices[0].message.content
-#     selections = [line.strip() for line in text.split("\n") if line.strip() != ""]
-#
-#     if len(selections) != K:
-#         print(f"WARNING: Gemini did not return {K} selections:", len(selections))
-#         print("Selections: ", selections)
-#         return selections
-#
-#     print("Selections: ", selections)
-#     return selections
+def filter_split(sentence, aspects, candidates, K=2):
+
+    prompt = create_filter_prompt(sentence, aspects, candidates, K)
+
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.0
+    )
+
+    text = response.choices[0].message.content
+    selections = [line.strip() for line in text.split("\n") if line.strip() != ""]
+
+    if len(selections) != K:
+        print(f"WARNING: Gemini did not return {K} selections:", len(selections))
+        print("Selections: ", selections)
+        return selections
+
+    print("Selections: ", selections)
+    return selections
 
 
 unicode_pattern = re.compile(r'\\u[0-9a-zA-Z]{4}')
@@ -177,6 +177,9 @@ def build_dataset(start, end, OUTPUT_FILE, OUTPUT_RAW_FILE):
 
     for row in batch:
 
+        if count_process == 200:
+            break
+
         start_time = time.time()
         count_process += 1
         print("count:", count_process)
@@ -191,11 +194,23 @@ def build_dataset(start, end, OUTPUT_FILE, OUTPUT_RAW_FILE):
             continue
         for s_raw_out in candidates:
             s_raw_out = safe_decode(s_raw_out)
-            fout.write(sentence + "####" + s_raw_out + "\n")
             fout_raw.write(sentence + "####" + s_raw_out + "\n")
+            fout_raw.flush()
 
-        fout.flush()
-        fout_raw.flush()
+
+        # Step 2: Select K s'
+        best = filter_split(sentence, aspects, candidates, 2)
+        if not best:
+            print(f"This {sentence} cant be processed in filter_split function")
+            continue
+
+        # Step 3: Export
+        for s_output in best:
+            # print("Output 1: ", s_output)
+            s_output = safe_decode(s_output)
+            # print("Output 2: ", s_output)
+            fout.write(sentence + "####" + s_output + "\n")
+            fout.flush()
 
         end_time = time.time()
         process_time = end_time - start_time
