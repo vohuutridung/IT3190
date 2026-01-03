@@ -3,16 +3,15 @@ import json
 import streamlit as st
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-from transformers.models.auto.modeling_auto import AutoModelForCausalLM
 import re
-
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+### Cache load model
 @st.cache_resource()
 def load_model():
     MODEL_ID = 'vohuutridung/vit5-large-absa'
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, use_fast=False)
     model = AutoModelForSeq2SeqLM.from_pretrained(
         MODEL_ID,
         dtype="auto",
@@ -22,7 +21,22 @@ def load_model():
 
     return tokenizer, model
 
+@st.cache_resource()
+def load_split_model():
+    VIATOSS_ID = 'phuc-hoang1208/finetuned-vit5base-textsplitting'
+    viatoss_tokenizer = AutoTokenizer.from_pretrained(VIATOSS_ID, use_fast=False)
+    viatoss_model = AutoModelForSeq2SeqLM.from_pretrained(
+        VIATOSS_ID,
+        torch_dtype="auto",
+        device_map='auto',
+    )
 
+    viatoss_model.eval()
+
+    return viatoss_tokenizer, viatoss_model
+
+
+### Core logic for app
 @torch.no_grad()
 def generate_response_seq2seqlm(review, tokenizer, model):
     inputs = tokenizer(
@@ -38,7 +52,6 @@ def generate_response_seq2seqlm(review, tokenizer, model):
     )
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
 
 CATEGORIES = {
     "TỔNG_QUAN","PIN","HIỆU_NĂNG","MÁY_ẢNH","MÀN_HÌNH",
@@ -56,7 +69,6 @@ def parse_model_json(raw_text):
     """
     if not raw_text:
         return []
-
     s = str(raw_text)
 
     results = []
@@ -72,8 +84,6 @@ def parse_model_json(raw_text):
 
     return results
 
-
-
 def sentiment_color(s):
     if "TÍCH" in s:
         return "green"
@@ -81,11 +91,25 @@ def sentiment_color(s):
         return "red"
     return "gray"
 
+@torch.no_grad()
+def split(reviews, tokenizer, model):
+    inputs = tokenizer(
+        reviews,
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=256
+    ).to(device)
+    outputs = model.generate(
+        **inputs,
+        max_length=256,
+    )
+
+    return tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
 # Streamlit Demo
 
 st.title("Aspect-Based Sentiment Analysis")
-
 review_input = st.text_area(
     "Nhập review sản phẩm:",
     height=150,
@@ -97,18 +121,34 @@ if st.button("Phân tích"):
         st.warning("Vui lòng nhập Review!")
     else:
         tokenize, model = load_model()
+        viatoss_tokenizer, viatoss_model = load_split_model()
 
         with st.spinner("Đang phân tích..."):
+            split_output = split(review_input, viatoss_tokenizer, viatoss_model)
             raw_output = generate_response_seq2seqlm(review_input, tokenize, model)
             parsed_output = parse_model_json(raw_output)
 
         print(parsed_output)
+
+        st.subheader("Kết quả tách câu")
+
+        st.write("")
+        st.write("")
+
+        for i, sent in enumerate(split_output, 1):
+            st.markdown(
+                f"<span style='font-size:20px'>- <b>Câu {i}:</b>&nbsp;&nbsp;&nbsp;&nbsp;{sent}</span>",
+                unsafe_allow_html=True
+            )
+
+        st.write("")
+        st.write("")
+
         st.subheader("Kết quả phân tích")
 
         st.write("")
         st.write("")
 
-        # Cách hiển thị 1
         header_cols = st.columns(4)
         header_titles = ["Aspect", "Category", "Sentiment", "Opinion"]
 

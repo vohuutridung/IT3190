@@ -12,3 +12,4 @@ tqdm
 torch
 streamlit
 huggingface_hub[hf_xet]
+sentencepiece
