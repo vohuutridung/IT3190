@@ -23,7 +23,7 @@ def load_model():
 
 @st.cache_resource()
 def load_split_model():
-    VIATOSS_ID = 'phuc-hoang1208/finetuned-vit5base-textsplitting'
+    VIATOSS_ID = 'vohuutridung/vit5-base-split-sft-cpo'
     viatoss_tokenizer = AutoTokenizer.from_pretrained(VIATOSS_ID, use_fast=False)
     viatoss_model = AutoModelForSeq2SeqLM.from_pretrained(
         VIATOSS_ID,
@@ -130,21 +130,22 @@ if st.button("Phân tích"):
 
         print(parsed_output)
 
-        st.subheader("Kết quả tách câu")
+        st.subheader("Kết quả tách câu từ Vi-ATOSS")
 
         st.write("")
         st.write("")
 
         for i, sent in enumerate(split_output, 1):
             st.markdown(
-                f"<span style='font-size:20px'>- <b>Câu {i}:</b>&nbsp;&nbsp;&nbsp;&nbsp;{sent}</span>",
+                # f"<span style='font-size:20px'>- <b>Câu {i}:</b>&nbsp;&nbsp;&nbsp;&nbsp;{sent}</span>",
+                f"<span style='font-size:20px'>{sent}</span>",
                 unsafe_allow_html=True
             )
-
+        print("Split output: ", split_output)
         st.write("")
         st.write("")
 
-        st.subheader("Kết quả phân tích")
+        st.subheader("Kết quả phân tích từ mô hình ABSA")
 
         st.write("")
         st.write("")
